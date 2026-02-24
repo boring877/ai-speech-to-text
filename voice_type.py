@@ -12,8 +12,10 @@ import tempfile
 import re
 from pathlib import Path
 
-sys.stdout.reconfigure(line_buffering=True)
-sys.stderr.reconfigure(line_buffering=True)
+if sys.stdout:
+    sys.stdout.reconfigure(line_buffering=True)
+if sys.stderr:
+    sys.stderr.reconfigure(line_buffering=True)
 
 print("Loading Voice Type...")
 
@@ -34,7 +36,7 @@ CONFIG_FILE = Path.home() / ".voice-type-config.json"
 SAMPLE_RATE = 16000
 
 # Load config
-config_data = {"api_key": "", "mic_index": None}
+config_data = {"api_key": "", "mic_index": None, "hotkey": "shift"}
 if CONFIG_FILE.exists():
     try:
         config_data = json.loads(CONFIG_FILE.read_text())
@@ -48,6 +50,7 @@ if not config_data.get("api_key") and old_config.exists():
 
 API_KEY = config_data.get("api_key", "")
 MIC_INDEX = config_data.get("mic_index")
+HOTKEY = config_data.get("hotkey", "shift")
 
 
 # State
@@ -155,7 +158,7 @@ class FloatingWidget:
 
         win = tk.Toplevel()
         win.title("Voice Type Settings")
-        win.geometry("400x250")
+        win.geometry("400x320")
         win.configure(bg="#1e1e2e")
         win.resizable(False, False)
 
@@ -175,7 +178,19 @@ class FloatingWidget:
             win, text="Microphone:", bg="#1e1e2e", fg="#f8f8f2", font=("Segoe UI", 10)
         ).pack(pady=(15, 5))
 
-        mic_combo = ttk.Combobox(win, width=47)
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure("TCombobox", 
+                       fieldbackground="#ffffff", 
+                       background="#ffffff", 
+                       foreground="#000000",
+                       arrowcolor="#000000")
+        style.map("TCombobox",
+                 fieldbackground=[('readonly', '#ffffff')],
+                 selectbackground=[('readonly', '#e0e0e0')],
+                 selectforeground=[('readonly', '#000000')])
+        
+        mic_combo = ttk.Combobox(win, width=47, style="TCombobox")
         mic_combo.pack(pady=5)
 
         # Get mics
@@ -197,20 +212,92 @@ class FloatingWidget:
         elif mics:
             mic_combo.current(0)
 
+        # Hotkey
+        tk.Label(
+            win, text="Push-to-Talk Key:", bg="#1e1e2e", fg="#f8f8f2", font=("Segoe UI", 10)
+        ).pack(pady=(15, 5))
+
+        hotkey_frame = tk.Frame(win, bg="#1e1e2e")
+        hotkey_frame.pack(pady=5)
+
+        hotkey_var = tk.StringVar(value=HOTKEY.upper())
+        hotkey_entry = tk.Entry(
+            hotkey_frame, 
+            width=15, 
+            bg="#ffffff", 
+            fg="#000000", 
+            insertbackground="#000000",
+            textvariable=hotkey_var,
+            font=("Segoe UI", 10),
+            justify="center"
+        )
+        hotkey_entry.pack(side=tk.LEFT, padx=5)
+        
+        # Make entry readonly and focusable for key capture
+        hotkey_entry.config(state="readonly")
+        
+        def on_hotkey_focus(event):
+            hotkey_entry.config(state="normal")
+            hotkey_var.set("Press a key...")
+            hotkey_entry.config(state="readonly")
+        
+        def on_hotkey_keypress(event):
+            # Map keycodes to key names
+            key_name = None
+            
+            # Special keys mapping
+            special_keys = {
+                16: "shift", 17: "ctrl", 18: "alt",
+                32: "space",
+                112: "f1", 113: "f2", 114: "f3", 115: "f4",
+                116: "f5", 117: "f6", 118: "f7", 119: "f8",
+                120: "f9", 121: "f10", 122: "f11", 123: "f12",
+            }
+            
+            if event.keycode in special_keys:
+                key_name = special_keys[event.keycode]
+            elif event.keysym and len(event.keysym) == 1:
+                key_name = event.keysym.lower()
+            elif event.keysym:
+                key_name = event.keysym.lower()
+            
+            if key_name:
+                hotkey_entry.config(state="normal")
+                hotkey_var.set(key_name.upper())
+                hotkey_entry.config(state="readonly")
+            
+            return "break"  # Prevent default handling
+        
+        hotkey_entry.bind("<FocusIn>", on_hotkey_focus)
+        hotkey_entry.bind("<KeyPress>", on_hotkey_keypress)
+
+        tk.Label(
+            hotkey_frame, text="(Click & press a key)", bg="#1e1e2e", fg="#6272a4", font=("Segoe UI", 9)
+        ).pack(side=tk.LEFT, padx=5)
+
         # Buttons
         btn_frame = tk.Frame(win, bg="#1e1e2e")
         btn_frame.pack(pady=20)
 
         def save():
-            global API_KEY, MIC_INDEX
+            global API_KEY, MIC_INDEX, HOTKEY
             API_KEY = api_entry.get().strip()
             idx = mic_combo.current()
             if idx >= 0 and mics:
                 MIC_INDEX = mics[idx][0]
+            
+            new_hotkey = hotkey_var.get().lower()
+            if new_hotkey and new_hotkey != "press a key...":
+                HOTKEY = new_hotkey
 
             config_data["api_key"] = API_KEY
             config_data["mic_index"] = MIC_INDEX
+            config_data["hotkey"] = HOTKEY
             CONFIG_FILE.write_text(json.dumps(config_data))
+
+            # Update tray icon tooltip
+            if tray_icon:
+                tray_icon.title = f"Voice Type (Hold {HOTKEY.upper()})"
 
             win.destroy()
             global settings_open
@@ -315,7 +402,7 @@ def create_tray_icon():
         pystray.MenuItem("Quit", on_quit),
     )
 
-    return pystray.Icon("voice_type", image, "Voice Type (Hold SHIFT)", menu)
+    return pystray.Icon("voice_type", image, f"Voice Type (Hold {HOTKEY.upper()})", menu)
 
 
 def transcribe_with_groq(audio_path):
@@ -520,7 +607,7 @@ def record_and_transcribe():
         frames = []
         start_time = time.time()
 
-        while keyboard.is_pressed("shift"):
+        while keyboard.is_pressed(HOTKEY):
             data = stream.read(chunk, exception_on_overflow=False)
             frames.append(data)
 
@@ -594,10 +681,10 @@ def record_and_transcribe():
 
 
 def hotkey_loop():
-    """Poll for Shift key state."""
+    """Poll for hotkey state."""
     was_pressed = False
     while state.running:
-        is_pressed = keyboard.is_pressed("shift")
+        is_pressed = keyboard.is_pressed(HOTKEY)
         if is_pressed and not was_pressed and not state.recording:
             was_pressed = True
             state.recording = True
@@ -611,7 +698,7 @@ def main():
     global widget, tray_icon
 
     print("=" * 50)
-    print("Voice Type - Groq Whisper (Hold SHIFT)")
+    print(f"Voice Type - Groq Whisper (Hold {HOTKEY.upper()})")
     print("=" * 50)
 
     if not API_KEY:
@@ -629,7 +716,7 @@ def main():
 
     threading.Thread(target=hotkey_loop, daemon=True).start()
 
-    print("\nReady! Hold SHIFT to record.")
+    print(f"\nReady! Hold {HOTKEY.upper()} to record.")
     print("Right-click tray icon for settings.")
 
     try:
