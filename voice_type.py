@@ -382,7 +382,7 @@ def record_and_transcribe():
         frames = []
         start_time = time.time()
 
-        while keyboard.is_pressed("shift") or keyboard.is_pressed("left shift"):
+        while keyboard.is_pressed("shift"):
             data = stream.read(chunk, exception_on_overflow=False)
             frames.append(data)
 
@@ -459,7 +459,7 @@ def hotkey_loop():
     """Poll for Shift key state."""
     was_pressed = False
     while state.running:
-        is_pressed = keyboard.is_pressed("shift") or keyboard.is_pressed("left shift")
+        is_pressed = keyboard.is_pressed("shift")
         if is_pressed and not was_pressed and not state.recording:
             was_pressed = True
             state.recording = True
