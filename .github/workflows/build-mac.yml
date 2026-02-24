@@ -19,9 +19,11 @@ jobs:
       with:
         python-version: '3.11'
     
-    - name: Install system dependencies
-      run: |
-        brew install portaudio
+    - name: Set up Homebrew
+      uses: Homebrew/actions/setup-homebrew@master
+
+    - name: Install PortAudio
+      run: brew install portaudio
     
     - name: Install Python dependencies
       run: |
