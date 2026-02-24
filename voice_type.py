@@ -9,6 +9,7 @@ import threading
 import time
 import json
 import tempfile
+import re
 from pathlib import Path
 
 sys.stdout.reconfigure(line_buffering=True)
@@ -345,8 +346,145 @@ def transcribe_with_groq(audio_path):
         return None, str(e)
 
 
+# Emoji mapping for voice commands
+EMOJI_MAP = {
+    # Common emotions
+    "happy emoji": "😊", "smile emoji": "😊", "smiling emoji": "😊",
+    "sad emoji": "😢", "crying emoji": "😭", "tears emoji": "😭",
+    "angry emoji": "😠", "mad emoji": "😠", "frustrated emoji": "😤",
+    "laughing emoji": "😂", "lol emoji": "😂", "haha emoji": "😂",
+    "love emoji": "❤️", "heart emoji": "❤️", "hearts emoji": "💕",
+    "cool emoji": "😎", "sunglasses emoji": "😎",
+    "wink emoji": "😉", "winking emoji": "😉",
+    "surprised emoji": "😲", "shocked emoji": "😱",
+    "thinking emoji": "🤔", "hmm emoji": "🤔",
+    "sleepy emoji": "😴", "tired emoji": "😴",
+    "sick emoji": "🤒", "ill emoji": "🤒",
+    "nerd emoji": "🤓", "geek emoji": "🤓",
+    
+    # Reactions
+    "thumbs up emoji": "👍", "thumbs down emoji": "👎",
+    "ok emoji": "👌", "okay emoji": "👌",
+    "clap emoji": "👏", "applause emoji": "👏",
+    "fire emoji": "🔥", "hot emoji": "🔥", "lit emoji": "🔥",
+    "star emoji": "⭐", "stars emoji": "✨",
+    "party emoji": "🎉", "celebration emoji": "🎉", "confetti emoji": "🎊",
+    "boom emoji": "💥", "explosion emoji": "💥",
+    "check emoji": "✅", "checkmark emoji": "✅", "done emoji": "✅",
+    "x emoji": "❌", "cross emoji": "❌", "no emoji": "❌",
+    "question emoji": "❓", "confused emoji": "❓",
+    "exclamation emoji": "❗", "warning emoji": "⚠️",
+    "idea emoji": "💡", "lightbulb emoji": "💡", "bulb emoji": "💡",
+    
+    # Hands/Gestures
+    "wave emoji": "👋", "hello emoji": "👋", "hi emoji": "👋",
+    "peace emoji": "✌️", "victory emoji": "✌️",
+    "fist emoji": "👊", "punch emoji": "👊",
+    "fingers crossed emoji": "🤞", "good luck emoji": "🤞",
+    "pray emoji": "🙏", "please emoji": "🙏", "thanks emoji": "🙏",
+    "high five emoji": "🙌", "raise hands emoji": "🙌",
+    "shrug emoji": "🤷", "idk emoji": "🤷",
+    "facepalm emoji": "🤦",
+    
+    # Animals
+    "dog emoji": "🐕", "puppy emoji": "🐶",
+    "cat emoji": "🐱", "kitty emoji": "🐱",
+    "monkey emoji": "🐵", "see no evil emoji": "🙈",
+    "fox emoji": "🦊",
+    "bear emoji": "🐻",
+    "panda emoji": "🐼",
+    "unicorn emoji": "🦄",
+    "butterfly emoji": "🦋",
+    "snake emoji": "🐍",
+    
+    # Food & Drinks
+    "pizza emoji": "🍕",
+    "burger emoji": "🍔", "hamburger emoji": "🍔",
+    "coffee emoji": "☕", "latte emoji": "☕",
+    "beer emoji": "🍺",
+    "wine emoji": "🍷",
+    "cake emoji": "🎂", "birthday emoji": "🎂",
+    "ice cream emoji": "🍦",
+    
+    # Weather & Nature
+    "sun emoji": "☀️", "sunny emoji": "☀️",
+    "moon emoji": "🌙", "crescent moon emoji": "🌙",
+    "cloud emoji": "☁️", "cloudy emoji": "☁️",
+    "rain emoji": "🌧️", "rainy emoji": "🌧️",
+    "snow emoji": "❄️", "snowflake emoji": "❄️",
+    "rainbow emoji": "🌈",
+    "flower emoji": "🌸", "blossom emoji": "🌸",
+    "tree emoji": "🌳",
+    
+    # Objects & Symbols
+    "rocket emoji": "🚀", "launch emoji": "🚀",
+    "computer emoji": "💻", "laptop emoji": "💻",
+    "phone emoji": "📱", "mobile emoji": "📱",
+    "email emoji": "📧", "mail emoji": "📧",
+    "book emoji": "📖",
+    "pencil emoji": "✏️", "write emoji": "✏️",
+    "lock emoji": "🔒", "secure emoji": "🔒",
+    "key emoji": "🔑", "password emoji": "🔑",
+    "clock emoji": "⏰", "alarm emoji": "⏰",
+    "calendar emoji": "📅", "date emoji": "📅",
+    "money emoji": "💰", "cash emoji": "💰", "dollar emoji": "💵",
+    "gift emoji": "🎁", "present emoji": "🎁",
+    "camera emoji": "📷", "photo emoji": "📷",
+    
+    # People & Activities
+    "runner emoji": "🏃", "running emoji": "🏃",
+    "dancer emoji": "💃", "dancing emoji": "💃",
+    "coder emoji": "👨‍💻", "developer emoji": "👨‍💻", "programmer emoji": "👨‍💻",
+    "artist emoji": "🎨", "paint emoji": "🎨",
+    "gamer emoji": "🎮", "gaming emoji": "🎮", "video game emoji": "🎮",
+    "music emoji": "🎵", "song emoji": "🎵", "note emoji": "🎵",
+    "microphone emoji": "🎤", "mic emoji": "🎤",
+    "movie emoji": "🎬", "film emoji": "🎬", "cinema emoji": "🎬",
+    "workout emoji": "💪", "muscle emoji": "💪", "strong emoji": "💪",
+    
+    # Flags & Places
+    "usa emoji": "🇺🇸", "america emoji": "🇺🇸", "us flag emoji": "🇺🇸",
+    "uk emoji": "🇬🇧", "britain emoji": "🇬🇧", "england emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "world emoji": "🌍", "globe emoji": "🌍", "earth emoji": "🌍",
+    
+    # Common phrases
+    "100 emoji": "💯",
+    "rock emoji": "🪨",
+    "rock and roll emoji": "🤘", "metal emoji": "🤘",
+    "skull emoji": "💀", "dead emoji": "💀",
+    "ghost emoji": "👻",
+    "alien emoji": "👽",
+    "robot emoji": "🤖", "bot emoji": "🤖",
+    "poop emoji": "💩", "shit emoji": "💩",
+    "egg emoji": "🥚", "easter emoji": "🥚",
+    "eye emoji": "👁️", "eyes emoji": "👀",
+    "ear emoji": "👂",
+    "nose emoji": "👃",
+}
+
+
+def convert_emojis(text):
+    """Convert emoji phrases to actual emojis."""
+    result = text
+    
+    # Sort by length (longest first) to avoid partial matches
+    sorted_emojis = sorted(EMOJI_MAP.items(), key=lambda x: len(x[0]), reverse=True)
+    
+    for phrase, emoji in sorted_emojis:
+        # Case-insensitive replacement
+        pattern = re.compile(re.escape(phrase), re.IGNORECASE)
+        result = pattern.sub(emoji, result)
+    
+    # Clean up any double spaces left after replacements
+    result = re.sub(r'\s+', ' ', result).strip()
+    
+    return result
+
+
 def type_text(text):
     """Type text using clipboard."""
+    # Convert emoji phrases to actual emojis
+    text = convert_emojis(text)
     pyperclip.copy(text)
     time.sleep(0.05)
     keyboard.press_and_release("ctrl+v")

@@ -62,6 +62,31 @@ Hold **SHIFT** to speak, release to type. Fast, accurate voice-to-text using Gro
 - Speak clearly for best results
 - Works in any app (IDEs, browsers, editors)
 - Right-click tray icon for settings anytime
+- Say "emoji" after an emoji name to insert it (e.g., "I'm so happy happy emoji" → "I'm so happy 😊")
+
+## Emoji Support
+
+Speak emoji names to insert actual emojis! Just say the emoji name followed by "emoji":
+
+| Say This | Get This |
+|----------|----------|
+| "happy emoji" | 😊 |
+| "sad emoji" | 😢 |
+| "angry emoji" | 😠 |
+| "laughing emoji" | 😂 |
+| "heart emoji" | ❤️ |
+| "fire emoji" | 🔥 |
+| "thumbs up emoji" | 👍 |
+| "thinking emoji" | 🤔 |
+| "party emoji" | 🎉 |
+| "rocket emoji" | 🚀 |
+
+**Examples:**
+- "That's awesome fire emoji" → "That's awesome 🔥"
+- "Great job thumbs up emoji" → "Great job 👍"
+- "I'm confused thinking emoji" → "I'm confused 🤔"
+
+Over 100+ emojis supported including emotions, animals, food, gestures, and more!
 
 ## Requirements
 
