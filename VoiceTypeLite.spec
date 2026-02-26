@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['voice_type.py'],
+    ['voice_type_lite.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='VoiceType',
+    name='VoiceTypeLite',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -35,6 +35,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    version='version.txt',
+    version='version_lite.txt',
     icon=['ai_tts_icon.ico'],
 )

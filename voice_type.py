@@ -35,8 +35,17 @@ print("Ready!")
 CONFIG_FILE = Path.home() / ".voice-type-config.json"
 SAMPLE_RATE = 16000
 
+# Default filter words - common filler words the model outputs when nothing is said
+DEFAULT_FILTER_WORDS = ["thank you", "thanks", "thank you.", "thanks."]
+
 # Load config
-config_data = {"api_key": "", "mic_index": None, "hotkey": "shift"}
+config_data = {
+    "api_key": "",
+    "mic_index": None,
+    "hotkey": "shift",
+    "accounting_mode": False,
+    "filter_words": DEFAULT_FILTER_WORDS
+}
 if CONFIG_FILE.exists():
     try:
         config_data = json.loads(CONFIG_FILE.read_text())
@@ -51,6 +60,15 @@ if not config_data.get("api_key") and old_config.exists():
 API_KEY = config_data.get("api_key", "")
 MIC_INDEX = config_data.get("mic_index")
 HOTKEY = config_data.get("hotkey", "shift")
+ACCOUNTING_MODE = config_data.get("accounting_mode", False)
+ACCOUNTING_COMMA = config_data.get("accounting_comma", False)
+CASUAL_MODE = config_data.get("casual_mode", False)
+FILTER_WORDS = config_data.get("filter_words", DEFAULT_FILTER_WORDS)
+
+# Debug: Show config on startup
+print(f"[startup] Config file: {CONFIG_FILE}")
+print(f"[startup] ACCOUNTING_MODE from config: {ACCOUNTING_MODE}")
+print(f"[startup] Full config: {config_data}")
 
 
 # State
@@ -65,69 +83,115 @@ tray_icon = None
 
 
 class FloatingWidget:
-    """Floating window to show status."""
+    """Floating window to show status with modern design."""
 
     def __init__(self):
         self.root = tk.Tk()
         self.root.overrideredirect(True)
         self.root.attributes("-topmost", True)
-        self.root.attributes("-alpha", 0.95)
+        
+        # Show in taskbar - this makes it behave like a normal app
+        self.root.attributes("-toolwindow", False)
+
+        # Modern color scheme - dark mode
+        self.bg_dark = "#1a1a2e"
+        self.bg_medium = "#16213e"
+        self.bg_light = "#0f3460"
+        self.accent_primary = "#4a9eff"
+        self.accent_secondary = "#533483"
+        self.accent_success = "#00ff88"
+        self.accent_warning = "#ffc107"
+        self.text_primary = "#ffffff"
+        self.text_secondary = "#a0a0a0"
+        self.border_color = "#4a9eff"
 
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        x = screen_width - 360
-        y = screen_height - 160
-        self.root.geometry(f"340x120+{x}+{y}")
+        
+        # Widget dimensions
+        widget_width = 320
+        widget_height = 100
+        
+        # Center horizontally, near bottom
+        x = (screen_width - widget_width) // 2
+        y = screen_height - widget_height - 100
+        self.root.geometry(f"{widget_width}x{widget_height}+{x}+{y}")
 
-        self.root.configure(bg="#1e1e2e")
+        self.root.configure(bg=self.bg_dark)
 
-        self.frame = tk.Frame(
-            self.root, bg="#1e1e2e", highlightbackground="#3d3d5c", highlightthickness=2
+        # Main frame with border
+        self.main_frame = tk.Frame(
+            self.root, 
+            bg=self.bg_dark,
+            highlightbackground=self.border_color,
+            highlightthickness=2
         )
-        self.frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        self.main_frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
 
-        # Status
+        # Content frame
+        self.content_frame = tk.Frame(self.main_frame, bg=self.bg_medium)
+        self.content_frame.pack(fill=tk.BOTH, expand=True, padx=3, pady=3)
+
+        # Status indicator row
+        self.status_frame = tk.Frame(self.content_frame, bg=self.bg_medium)
+        self.status_frame.pack(fill=tk.X, padx=15, pady=(12, 5))
+
+        # Status icon/label
         self.status_font = tkfont.Font(family="Segoe UI", size=12, weight="bold")
         self.status_label = tk.Label(
-            self.frame,
-            text="🎤 Recording...",
+            self.status_frame,
+            text="● Ready",
             font=self.status_font,
-            fg="#ff5555",
-            bg="#1e1e2e",
-            pady=8,
+            fg=self.accent_success,
+            bg=self.bg_medium,
         )
-        self.status_label.pack(fill=tk.X)
+        self.status_label.pack(side=tk.LEFT)
 
-        # Text
+        # Recording indicator (hidden by default)
+        self.rec_indicator = tk.Label(
+            self.status_frame,
+            text="",
+            font=("Segoe UI", 10),
+            fg=self.accent_primary,
+            bg=self.bg_medium,
+        )
+        self.rec_indicator.pack(side=tk.RIGHT)
+
+        # Separator line
+        self.separator = tk.Frame(self.content_frame, height=1, bg=self.border_color)
+        self.separator.pack(fill=tk.X, padx=15, pady=8)
+
+        # Text display
         self.text_font = tkfont.Font(family="Segoe UI", size=11)
         self.text_label = tk.Label(
-            self.frame,
-            text="Speak now...",
+            self.content_frame,
+            text="Hold Shift to speak...",
             font=self.text_font,
-            fg="#f8f8f2",
-            bg="#1e1e2e",
-            wraplength=320,
-            pady=5,
+            fg=self.text_secondary,
+            bg=self.bg_medium,
+            wraplength=280,
         )
-        self.text_label.pack(fill=tk.BOTH, expand=True)
+        self.text_label.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 12))
 
-        # Colors
+        # Status colors
         self.colors = {
-            "ready": ("#50fa7b", "🎤 Ready"),
-            "recording": ("#ff5555", "🔴 Recording..."),
-            "processing": ("#bd93f9", "⏳ Transcribing..."),
-            "done": ("#50fa7b", "✅"),
-            "error": ("#ff5555", "❌"),
-            "nokey": ("#ff5555", "❌ No API Key"),
+            "ready": (self.accent_success, "● Ready"),
+            "recording": (self.accent_primary, "● Recording"),
+            "processing": (self.accent_warning, "◐ Transcribing"),
+            "done": (self.accent_success, "✓ Done"),
+            "error": (self.accent_primary, "✕ Error"),
+            "nokey": (self.accent_primary, "✕ No API Key"),
         }
 
-        # Drag
+        # Drag functionality
         self.drag_start_x = 0
         self.drag_start_y = 0
-        self.frame.bind("<Button-1>", self.start_drag)
-        self.frame.bind("<B1-Motion>", self.drag)
+        self.content_frame.bind("<Button-1>", self.start_drag)
+        self.content_frame.bind("<B1-Motion>", self.drag)
         self.status_label.bind("<Button-1>", self.start_drag)
         self.status_label.bind("<B1-Motion>", self.drag)
+        self.text_label.bind("<Button-1>", self.start_drag)
+        self.text_label.bind("<B1-Motion>", self.drag)
 
         # Start hidden
         self.hidden = True
@@ -158,40 +222,74 @@ class FloatingWidget:
 
         win = tk.Toplevel()
         win.title("Voice Type Settings")
-        win.geometry("400x320")
-        win.configure(bg="#1e1e2e")
+        win.geometry("500x700")
+        win.configure(bg=self.bg_dark)
         win.resizable(False, False)
 
-        # API Key
+        # Header
+        header_frame = tk.Frame(win, bg=self.bg_medium, height=50)
+        header_frame.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
+        
         tk.Label(
-            win, text="Groq API Key:", bg="#1e1e2e", fg="#f8f8f2", font=("Segoe UI", 10)
-        ).pack(pady=(20, 5))
+            header_frame, 
+            text="⚙ Voice Type Settings", 
+            font=("Segoe UI", 14, "bold"),
+            fg=self.border_color,
+            bg=self.bg_medium
+        ).pack(pady=12)
 
-        api_entry = tk.Entry(
-            win, width=50, bg="#282a36", fg="#f8f8f2", insertbackground="#f8f8f2"
-        )
-        api_entry.pack(pady=5)
+        # Separator
+        tk.Frame(win, height=2, bg=self.border_color).pack(fill=tk.X)
+
+        # Content frame
+        content = tk.Frame(win, bg=self.bg_dark)
+        content.pack(fill=tk.BOTH, expand=True, padx=25, pady=15)
+
+        # Style for inputs
+        input_style = {
+            "bg": self.bg_light,
+            "fg": self.text_primary,
+            "insertbackground": self.text_primary,
+            "relief": "flat",
+            "font": ("Segoe UI", 10)
+        }
+        
+        label_style = {
+            "bg": self.bg_dark,
+            "fg": self.text_secondary,
+            "font": ("Segoe UI", 10)
+        }
+
+        # API Key Section
+        tk.Label(content, text="🔐 API Key", font=("Segoe UI", 11, "bold"), 
+                fg=self.border_color, bg=self.bg_dark).pack(anchor="w", pady=(0, 5))
+        tk.Label(content, text="Groq API Key:", **label_style).pack(anchor="w")
+        
+        api_entry = tk.Entry(content, width=50, **input_style)
+        api_entry.pack(fill=tk.X, pady=(5, 15))
         api_entry.insert(0, API_KEY)
 
-        # Microphone
-        tk.Label(
-            win, text="Microphone:", bg="#1e1e2e", fg="#f8f8f2", font=("Segoe UI", 10)
-        ).pack(pady=(15, 5))
+        # Microphone Section
+        tk.Label(content, text="🎤 Microphone", font=("Segoe UI", 11, "bold"),
+                fg=self.border_color, bg=self.bg_dark).pack(anchor="w", pady=(0, 5))
+        tk.Label(content, text="Select input device:", **label_style).pack(anchor="w")
 
         style = ttk.Style()
         style.theme_use('clam')
-        style.configure("TCombobox", 
-                       fieldbackground="#ffffff", 
-                       background="#ffffff", 
-                       foreground="#000000",
-                       arrowcolor="#000000")
-        style.map("TCombobox",
-                 fieldbackground=[('readonly', '#ffffff')],
-                 selectbackground=[('readonly', '#e0e0e0')],
-                 selectforeground=[('readonly', '#000000')])
+        style.configure("Settings.TCombobox", 
+                       fieldbackground=self.bg_light, 
+                       background=self.bg_light, 
+                       foreground=self.text_primary,
+                       arrowcolor=self.border_color,
+                       borderwidth=0)
+        style.map("Settings.TCombobox",
+                 fieldbackground=[('readonly', self.bg_light)],
+                 selectbackground=[('readonly', self.border_color)],
+                 selectforeground=[('readonly', self.bg_dark)])
         
-        mic_combo = ttk.Combobox(win, width=47, style="TCombobox")
-        mic_combo.pack(pady=5)
+        mic_combo = ttk.Combobox(content, width=47, style="Settings.TCombobox", font=("Segoe UI", 10))
+        mic_combo.pack(fill=tk.X, pady=(5, 15))
 
         # Get mics
         p = pyaudio.PyAudio()
@@ -212,40 +310,35 @@ class FloatingWidget:
         elif mics:
             mic_combo.current(0)
 
-        # Hotkey
-        tk.Label(
-            win, text="Push-to-Talk Key:", bg="#1e1e2e", fg="#f8f8f2", font=("Segoe UI", 10)
-        ).pack(pady=(15, 5))
-
-        hotkey_frame = tk.Frame(win, bg="#1e1e2e")
-        hotkey_frame.pack(pady=5)
+        # Hotkey Section
+        tk.Label(content, text="⌨ Push-to-Talk Key", font=("Segoe UI", 11, "bold"),
+                fg=self.border_color, bg=self.bg_dark).pack(anchor="w", pady=(0, 5))
+        
+        hotkey_frame = tk.Frame(content, bg=self.bg_dark)
+        hotkey_frame.pack(fill=tk.X, pady=(5, 15))
 
         hotkey_var = tk.StringVar(value=HOTKEY.upper())
         hotkey_entry = tk.Entry(
             hotkey_frame, 
-            width=15, 
-            bg="#ffffff", 
-            fg="#000000", 
-            insertbackground="#000000",
+            width=10,
+            bg=self.bg_light,
+            fg=self.border_color,
+            insertbackground=self.border_color,
             textvariable=hotkey_var,
-            font=("Segoe UI", 10),
-            justify="center"
+            font=("Segoe UI", 12, "bold"),
+            justify="center",
+            relief="flat"
         )
-        hotkey_entry.pack(side=tk.LEFT, padx=5)
-        
-        # Make entry readonly and focusable for key capture
+        hotkey_entry.pack(side=tk.LEFT)
         hotkey_entry.config(state="readonly")
         
         def on_hotkey_focus(event):
             hotkey_entry.config(state="normal")
-            hotkey_var.set("Press a key...")
+            hotkey_var.set("...")
             hotkey_entry.config(state="readonly")
         
         def on_hotkey_keypress(event):
-            # Map keycodes to key names
             key_name = None
-            
-            # Special keys mapping
             special_keys = {
                 16: "shift", 17: "ctrl", 18: "alt",
                 32: "space",
@@ -265,73 +358,143 @@ class FloatingWidget:
                 hotkey_entry.config(state="normal")
                 hotkey_var.set(key_name.upper())
                 hotkey_entry.config(state="readonly")
-            
-            return "break"  # Prevent default handling
+            return "break"
         
         hotkey_entry.bind("<FocusIn>", on_hotkey_focus)
         hotkey_entry.bind("<KeyPress>", on_hotkey_keypress)
 
-        tk.Label(
-            hotkey_frame, text="(Click & press a key)", bg="#1e1e2e", fg="#6272a4", font=("Segoe UI", 9)
-        ).pack(side=tk.LEFT, padx=5)
+        tk.Label(hotkey_frame, text="  (click and press a key)", 
+                bg=self.bg_dark, fg=self.text_secondary, font=("Segoe UI", 9)).pack(side=tk.LEFT)
+
+        # Features Section
+        tk.Label(content, text="✨ Features", font=("Segoe UI", 11, "bold"),
+                fg=self.border_color, bg=self.bg_dark).pack(anchor="w", pady=(0, 5))
+        
+        accounting_var = tk.BooleanVar(value=ACCOUNTING_MODE)
+        accounting_check = tk.Checkbutton(
+            content,
+            text="🔢 Accounting Mode (convert words like 'one' to '1')",
+            variable=accounting_var,
+            bg=self.bg_dark,
+            fg=self.text_primary,
+            selectcolor=self.bg_light,
+            activebackground=self.bg_dark,
+            activeforeground=self.text_primary,
+            font=("Segoe UI", 10),
+            cursor="hand2"
+        )
+        accounting_check.pack(anchor="w", pady=(5, 5))
+        
+        # Accounting comma formatting option
+        comma_var = tk.BooleanVar(value=ACCOUNTING_COMMA)
+        comma_check = tk.Checkbutton(
+            content,
+            text="   └─ Add commas to large numbers (e.g., '1,234,567')",
+            variable=comma_var,
+            bg=self.bg_dark,
+            fg=self.text_secondary,
+            selectcolor=self.bg_light,
+            activebackground=self.bg_dark,
+            activeforeground=self.text_primary,
+            font=("Segoe UI", 9),
+            cursor="hand2"
+        )
+        comma_check.pack(anchor="w", pady=(0, 5))
+        
+        # Casual mode option
+        casual_var = tk.BooleanVar(value=CASUAL_MODE)
+        casual_check = tk.Checkbutton(
+            content,
+            text="💬 Casual Mode (lowercase, no formal punctuation)",
+            variable=casual_var,
+            bg=self.bg_dark,
+            fg=self.text_primary,
+            selectcolor=self.bg_light,
+            activebackground=self.bg_dark,
+            activeforeground=self.text_primary,
+            font=("Segoe UI", 10),
+            cursor="hand2"
+        )
+        casual_check.pack(anchor="w", pady=(5, 15))
+
+        # Filter Words
+        tk.Label(content, text="🚫 Filter Words", font=("Segoe UI", 11, "bold"),
+                fg=self.border_color, bg=self.bg_dark).pack(anchor="w", pady=(0, 5))
+        tk.Label(content, text="Phrases to block (comma-separated):", **label_style).pack(anchor="w")
+
+        filter_entry = tk.Entry(content, width=50, **input_style)
+        filter_entry.pack(fill=tk.X, pady=(5, 5))
+        filter_entry.insert(0, ", ".join(FILTER_WORDS) if FILTER_WORDS else "")
+        
+        tk.Label(content, text="Example: thank you, thanks", 
+                bg=self.bg_dark, fg=self.text_secondary, font=("Segoe UI", 9)).pack(anchor="w", pady=(0, 15))
 
         # Buttons
-        btn_frame = tk.Frame(win, bg="#1e1e2e")
+        btn_frame = tk.Frame(content, bg=self.bg_dark)
         btn_frame.pack(pady=20)
 
         def save():
-            global API_KEY, MIC_INDEX, HOTKEY
+            global API_KEY, MIC_INDEX, HOTKEY, ACCOUNTING_MODE, ACCOUNTING_COMMA, CASUAL_MODE, FILTER_WORDS
             API_KEY = api_entry.get().strip()
             idx = mic_combo.current()
             if idx >= 0 and mics:
                 MIC_INDEX = mics[idx][0]
             
             new_hotkey = hotkey_var.get().lower()
-            if new_hotkey and new_hotkey != "press a key...":
+            if new_hotkey and new_hotkey != "...":
                 HOTKEY = new_hotkey
+
+            ACCOUNTING_MODE = accounting_var.get()
+            ACCOUNTING_COMMA = comma_var.get()
+            CASUAL_MODE = casual_var.get()
+            
+            filter_text_val = filter_entry.get().strip()
+            if filter_text_val:
+                FILTER_WORDS = [w.strip() for w in filter_text_val.split(",") if w.strip()]
+            else:
+                FILTER_WORDS = []
 
             config_data["api_key"] = API_KEY
             config_data["mic_index"] = MIC_INDEX
             config_data["hotkey"] = HOTKEY
+            config_data["accounting_mode"] = ACCOUNTING_MODE
+            config_data["accounting_comma"] = ACCOUNTING_COMMA
+            config_data["casual_mode"] = CASUAL_MODE
+            config_data["filter_words"] = FILTER_WORDS
             CONFIG_FILE.write_text(json.dumps(config_data))
 
-            # Update tray icon tooltip
             if tray_icon:
                 tray_icon.title = f"Voice Type (Hold {HOTKEY.upper()})"
 
-            win.destroy()
-            global settings_open
-            settings_open = False
+            save_btn.config(text="✓ Saved!", bg=self.accent_success)
+            win.after(1500, lambda: save_btn.config(text="Save", bg=self.border_color))
 
         def get_key():
             import webbrowser
-
             webbrowser.open("https://console.groq.com/keys")
 
-        def cancel():
+        def close_settings():
             global settings_open
             settings_open = False
             win.destroy()
 
-        tk.Button(
-            btn_frame, text="Save", bg="#50fa7b", fg="#1e1e2e", width=10, command=save
-        ).pack(side=tk.LEFT, padx=5)
-        tk.Button(
-            btn_frame,
-            text="Get API Key",
-            bg="#6272a4",
-            fg="#f8f8f2",
-            width=12,
-            command=get_key,
-        ).pack(side=tk.LEFT, padx=5)
-        tk.Button(
-            btn_frame,
-            text="Cancel",
-            bg="#44475a",
-            fg="#f8f8f2",
-            width=10,
-            command=cancel,
-        ).pack(side=tk.LEFT, padx=5)
+        btn_style = {
+            "font": ("Segoe UI", 10, "bold"),
+            "relief": "flat",
+            "cursor": "hand2",
+            "width": 12,
+            "height": 1
+        }
+        
+        save_btn = tk.Button(btn_frame, text="Save", bg=self.border_color, fg="white",
+                            command=save, **btn_style)
+        save_btn.pack(side=tk.LEFT, padx=5)
+        
+        tk.Button(btn_frame, text="Get API Key", bg=self.accent_secondary, fg="white",
+                 command=get_key, **btn_style).pack(side=tk.LEFT, padx=5)
+        
+        tk.Button(btn_frame, text="Close", bg=self.bg_light, fg=self.text_primary,
+                 command=close_settings, **btn_style).pack(side=tk.LEFT, padx=5)
 
         def on_close():
             global settings_open
@@ -568,10 +731,242 @@ def convert_emojis(text):
     return result
 
 
+# Number word to digit mapping for accounting mode
+# Only use unambiguous number words to avoid false positives
+NUMBER_WORD_MAP = {
+    # Basic numbers 0-9
+    "zero": "0",
+    "one": "1",
+    "two": "2",
+    "three": "3",
+    "four": "4",
+    "five": "5",
+    "six": "6",
+    "seven": "7",
+    "eight": "8",
+    "nine": "9",
+    
+    # Teens
+    "ten": "10",
+    "eleven": "11",
+    "twelve": "12",
+    "thirteen": "13",
+    "fourteen": "14",
+    "fifteen": "15",
+    "sixteen": "16",
+    "seventeen": "17",
+    "eighteen": "18",
+    "nineteen": "19",
+    
+    # Tens
+    "twenty": "20",
+    "thirty": "30",
+    "forty": "40",
+    "fourty": "40",
+    "fifty": "50",
+    "sixty": "60",
+    "seventy": "70",
+    "eighty": "80",
+    "ninety": "90",
+}
+
+
+def convert_numbers_to_digits(text):
+    """Convert number words to digits for accounting mode."""
+    result = text
+    
+    # Sort by length (longest first) to avoid partial matches
+    sorted_numbers = sorted(NUMBER_WORD_MAP.items(), key=lambda x: len(x[0]), reverse=True)
+    
+    for word, digit in sorted_numbers:
+        # Match word boundaries including punctuation
+        # This handles "one, two, three" properly
+        pattern = re.compile(
+            r'(?<![a-zA-Z])' + re.escape(word) + r'(?![a-zA-Z])',
+            re.IGNORECASE
+        )
+        result = pattern.sub(digit, result)
+    
+    return result
+
+
+# Common Whisper hallucinations when no speech is detected
+HALLUCINATION_PHRASES = [
+    "thank you",
+    "thanks", 
+    "thank you.",
+    "thanks.",
+    "thank you for watching",
+    "thanks for watching",
+    "you",
+    "you.",
+    "bye",
+    "bye.",
+    "goodbye",
+    "goodbye.",
+    "subtitle",
+    "subtitles",
+    "caption",
+    "captions",
+]
+
+
+def filter_text(text):
+    """Filter out unwanted words from transcription."""
+    global FILTER_WORDS
+    
+    if not text:
+        return ""
+    
+    result = text.strip()
+    
+    # If empty after stripping, return empty
+    if not result:
+        return ""
+    
+    # Only use user's custom filter words - NOT hardcoded hallucinations
+    # User has full control over what to filter
+    if not FILTER_WORDS:
+        return result
+    
+    # Check if the entire text matches a filter word (case-insensitive)
+    result_lower = result.lower()
+    for filter_word in FILTER_WORDS:
+        filter_word_lower = filter_word.lower().strip()
+        if result_lower == filter_word_lower:
+            print(f"[filtered] Matched filter: '{filter_word}'")
+            return ""
+    
+    # Also check if text contains filter word as substring (for short texts)
+    if len(result) < 30:
+        for filter_word in FILTER_WORDS:
+            filter_word_lower = filter_word.lower().strip()
+            if filter_word_lower in result_lower:
+                print(f"[filtered] Contains filter: '{filter_word}'")
+                return ""
+    
+    return result
+
+
+def normalize_numbers_from_api(text):
+    """Remove commas from numbers in API response unless comma mode is enabled."""
+    global ACCOUNTING_COMMA
+    
+    print(f"[NORMALIZE] ACCOUNTING_COMMA = {ACCOUNTING_COMMA}")
+    
+    if ACCOUNTING_COMMA:
+        # Comma mode is ON - keep commas as they are from API
+        print(f"[NORMALIZE] Keeping commas (comma mode ON)")
+        return text
+    
+    # Comma mode is OFF - remove commas from numbers
+    # This handles cases where Groq API returns "1,234,567"
+    def remove_commas(match):
+        return match.group(0).replace(',', '')
+    
+    result = re.sub(r'\b[\d,]+\b', remove_commas, text)
+    print(f"[NORMALIZE] Removed commas: '{text}' -> '{result}'")
+    return result
+
+
+def format_number_with_commas(text):
+    """Add commas to large numbers in text if accounting comma mode is enabled."""
+    global ACCOUNTING_COMMA
+    
+    print(f"[COMMA_FUNC] ACCOUNTING_COMMA value: {ACCOUNTING_COMMA}")
+    
+    # Explicit check - must be True to add commas
+    if ACCOUNTING_COMMA is not True:
+        print(f"[COMMA_FUNC] SKIPPING commas - mode is OFF")
+        return text
+    
+    def add_commas(match):
+        num = match.group(0)
+        # Add commas every 3 digits from the right
+        if len(num) > 3:
+            return "{:,}".format(int(num))
+        return num
+    
+    # Find all numbers with 4+ digits and add commas
+    print(f"[COMMA_FUNC] ADDING commas")
+    return re.sub(r'\b\d{4,}\b', add_commas, text)
+
+
+def apply_casual_mode(text):
+    """Apply casual formatting: lowercase and informal punctuation."""
+    global CASUAL_MODE
+    
+    if not CASUAL_MODE:
+        return text
+    
+    print(f"[CASUAL] Applying casual mode to: '{text}'")
+    
+    # Convert to lowercase
+    result = text.lower()
+    
+    # Replace formal punctuation with casual equivalents
+    # Remove periods at end of sentences (casual texting style)
+    result = re.sub(r'\.$', '', result)
+    result = re.sub(r'\.(\s)', r'\1', result)
+    
+    # Keep exclamation and question marks as they add emotion
+    # But remove multiple punctuation like "!!!" or "???" down to one
+    result = re.sub(r'[!]{2,}', '!', result)
+    result = re.sub(r'[?]{2,}', '?', result)
+    
+    # Remove formal commas that aren't needed for clarity
+    # Keep commas in numbers though
+    result = re.sub(r',\s+', ' ', result)
+    
+    print(f"[CASUAL] Result: '{result}'")
+    return result
+
+
 def type_text(text):
     """Type text using clipboard."""
+    global ACCOUNTING_MODE, ACCOUNTING_COMMA, CASUAL_MODE
+    
+    # Very explicit debug
+    print("=" * 60)
+    print(f"[TYPE_TEXT] ACCOUNTING_MODE = {ACCOUNTING_MODE}")
+    print(f"[TYPE_TEXT] ACCOUNTING_COMMA = {ACCOUNTING_COMMA}")
+    print(f"[TYPE_TEXT] Original text: '{text}'")
+    
+    # First, normalize numbers from API (remove commas unless comma mode is ON)
+    text = normalize_numbers_from_api(text)
+    
+    # Then convert number words to digits if accounting mode is enabled
+    # Do this BEFORE filtering so "one" -> "1" works
+    if ACCOUNTING_MODE:
+        original = text
+        text = convert_numbers_to_digits(text)
+        print(f"[TYPE_TEXT] CONVERTED: '{original}' -> '{text}'")
+        
+        # Add commas to large numbers if enabled
+        if ACCOUNTING_COMMA:
+            text_before_comma = text
+            text = format_number_with_commas(text)
+            if text != text_before_comma:
+                print(f"[TYPE_TEXT] COMMAS: '{text_before_comma}' -> '{text}'")
+    else:
+        print(f"[TYPE_TEXT] SKIPPING conversion - mode is OFF")
+    print("=" * 60)
+    
+    # Apply filter after conversion
+    text = filter_text(text)
+    
+    # If text was filtered out, don't type anything
+    if not text:
+        print("[filtered] Text was filtered out, nothing to type")
+        return
+    
     # Convert emoji phrases to actual emojis
     text = convert_emojis(text)
+    
+    # Apply casual mode (lowercase, informal punctuation)
+    text = apply_casual_mode(text)
+    
+    print(f"[typing] {text}")
     pyperclip.copy(text)
     time.sleep(0.05)
     keyboard.press_and_release("ctrl+v")
@@ -703,7 +1098,6 @@ def main():
 
     if not API_KEY:
         print("\n  No API key found!")
-        print("Right-click tray icon -> Settings")
         print("Get free key: https://console.groq.com/keys")
     else:
         print(f"API key loaded ({len(API_KEY)} chars)")
@@ -717,7 +1111,9 @@ def main():
     threading.Thread(target=hotkey_loop, daemon=True).start()
 
     print(f"\nReady! Hold {HOTKEY.upper()} to record.")
-    print("Right-click tray icon for settings.")
+
+    # Auto-open settings window on startup
+    widget.root.after(500, widget.open_settings)
 
     try:
         widget.run()
