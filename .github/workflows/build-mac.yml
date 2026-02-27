@@ -1,0 +1,54 @@
+name: Build Mac Version
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Set up Homebrew
+      uses: Homebrew/actions/setup-homebrew@master
+
+    - name: Install PortAudio
+      run: brew install portaudio
+    
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyaudio
+        pip install -r requirements.txt
+        pip install pyinstaller
+    
+    - name: Build app
+      run: |
+        pyinstaller VoiceType-Mac.spec --noconfirm
+    
+    - name: Create PKG installer
+      run: |
+        mkdir -p dist/pkg_root/Applications
+        cp -R dist/VoiceType.app dist/pkg_root/Applications/
+        pkgbuild --root dist/pkg_root \
+          --identifier com.voicetype.app \
+          --version 1.0 \
+          --install-location / \
+          dist/VoiceType.pkg
+    
+    - name: Upload PKG artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: VoiceType-macOS
+        path: dist/VoiceType.pkg
+        retention-days: 30

@@ -11,8 +11,14 @@ __pycache__/
 *.so
 .Python
 *.egg-info/
-dist/
+
+# Build output (but keep exe files for downloads)
 build/
+dist/*.pyc
+dist/*.py
+dist/*.txt
+dist/*.bat
+dist/*.md
 
 # IDE
 .vscode/
