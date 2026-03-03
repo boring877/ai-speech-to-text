@@ -391,9 +391,21 @@ def type_text(text):
             time.sleep(0.01)
         keyboard.write(" ")
     else:
+        old_clip = ""
+        if not AUTO_COPY:
+            try:
+                old_clip = pyperclip.paste()
+            except Exception:
+                pass
         pyperclip.copy(text)
         time.sleep(0.05)
         keyboard.press_and_release("ctrl+v")
+        if not AUTO_COPY:
+            time.sleep(0.05)
+            try:
+                pyperclip.copy(old_clip)
+            except Exception:
+                pass
 
 
 # ---------------------------------------------------------------------------

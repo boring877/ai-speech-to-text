@@ -18,7 +18,8 @@
       "Bash(python -m PyInstaller VoiceType.spec --noconfirm)",
       "Bash(du -sh /c/Users/Borin/OneDrive/Documents/ai-speech-to-text/*)",
       "Bash(du -sh *)",
-      "Bash(gh run view 22606960230 --log-failed)"
+      "Bash(gh run view 22606960230 --log-failed)",
+      "Bash(pyinstaller VoiceType.spec --noconfirm)"
     ]
   }
 }

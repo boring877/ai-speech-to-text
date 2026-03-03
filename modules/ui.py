@@ -360,9 +360,10 @@ class FloatingWidget:
         cfg = self.config
         win = tk.Toplevel()
         win.title(f"VoiceType v{self.version} Settings")
-        win.geometry("550x600")
+        win.geometry("550x620")
+        win.minsize(520, 560)
         win.configure(bg=self.bg_dark)
-        win.resizable(False, False)
+        win.resizable(True, True)
 
         label_style = {
             "bg": self.bg_dark, "fg": self.text_secondary, "font": ("Segoe UI", 10)
@@ -410,6 +411,10 @@ class FloatingWidget:
             )
             btn.pack(side=tk.LEFT, padx=2)
             tabs[tab_name] = btn
+
+        # Button bar anchored to bottom BEFORE content_area so it's never pushed out
+        btn_bar = tk.Frame(win, bg=self.bg_dark)
+        btn_bar.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
 
         content_area = tk.Frame(win, bg=self.bg_dark)
         content_area.pack(fill=tk.BOTH, expand=True)
@@ -756,10 +761,7 @@ class FloatingWidget:
         # Show first tab
         switch_tab("General")
 
-        # ── Button bar ────────────────────────────────────────────────
-        btn_bar = tk.Frame(win, bg=self.bg_dark)
-        btn_bar.pack(fill=tk.X, padx=10, pady=10)
-
+        # ── Button bar (frame created above, buttons added here) ──────
         def save():
             cfg["api_key"] = api_entry.get().strip()
             selected_mic = mic_combo.get()
