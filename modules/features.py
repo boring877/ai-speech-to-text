@@ -10,7 +10,7 @@ import time
 
 import keyboard
 
-from voice_type_data import (
+from .data import (
     EMOJI_MAP,
     KAOMOJI_MAP,
     EMOJI_TO_KAOMOJI,

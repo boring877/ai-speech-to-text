@@ -29,7 +29,7 @@ import tkinter as tk
 from tkinter import font as tkfont, ttk, messagebox
 from PIL import Image, ImageDraw
 
-from voice_type_core import CONFIG_FILE, DEFAULT_FILTER_WORDS
+from .core import CONFIG_FILE, DEFAULT_FILTER_WORDS
 
 # ---------------------------------------------------------------------------
 # Module-level popup-visibility flags

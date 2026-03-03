@@ -28,7 +28,7 @@ import pyaudio
 import pyperclip
 import wave
 
-from voice_type_core import (
+from modules.core import (
     CONFIG_FILE, SAMPLE_RATE, DEFAULT_FILTER_WORDS,
     convert_numbers_to_digits,
     filter_text as _filter_text_core,
@@ -36,13 +36,13 @@ from voice_type_core import (
     format_number_with_commas as _format_commas_core,
     apply_casual_mode as _apply_casual_core,
 )
-from voice_type_data import DEFAULT_MACROS, QUICK_SNIPPETS
-from voice_type_features import (
+from modules.data import DEFAULT_MACROS, QUICK_SNIPPETS
+from modules.features import (
     convert_emojis, auto_add_kaomoji, apply_macros, process_voice_commands,
 )
-from voice_type_history import save_to_history, update_stats, export_history
-from voice_type_audio import transcribe_with_groq, transcribe_audio_file
-from voice_type_ui import (
+from modules.history import save_to_history, update_stats, export_history
+from modules.audio import transcribe_with_groq, transcribe_audio_file
+from modules.ui import (
     FloatingWidget, create_tray_icon,
     show_shortcuts_overlay, show_snippets_popup, show_language_switcher,
     shortcuts_visible, snippets_visible, language_switcher_visible,

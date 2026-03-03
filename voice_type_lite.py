@@ -22,7 +22,7 @@ import pyaudio
 import wave
 import webbrowser
 
-from voice_type_core import (
+from modules.core import (
     CONFIG_FILE, SAMPLE_RATE, DEFAULT_FILTER_WORDS,
     load_config, save_config,
     transcribe_with_groq as _transcribe_core,
