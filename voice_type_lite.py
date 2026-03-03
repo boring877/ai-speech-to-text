@@ -4,10 +4,8 @@ Uses Groq Whisper API for fast, accurate speech-to-text.
 """
 
 import sys
-import os
 import threading
 import time
-import json
 import tempfile
 import re
 from pathlib import Path
@@ -22,31 +20,21 @@ import pyperclip
 import tkinter as tk
 import pyaudio
 import wave
-import httpx
+import webbrowser
+
+from voice_type_core import (
+    CONFIG_FILE, SAMPLE_RATE, DEFAULT_FILTER_WORDS,
+    load_config, save_config,
+    transcribe_with_groq as _transcribe_core,
+    convert_numbers_to_digits,
+    filter_text as _filter_text_core,
+    apply_casual_mode as _apply_casual_mode_core,
+)
 
 print("Ready!")
 
-# Config - uses same config as regular version for compatibility
-CONFIG_FILE = Path.home() / ".voice-type-config.json"
-SAMPLE_RATE = 16000
-
-# Default filter words
-DEFAULT_FILTER_WORDS = ["thank you", "thanks", "thank you.", "thanks."]
-
 # Load config
-config_data = {
-    "api_key": "",
-    "mic_index": None,
-    "hotkey": "shift",
-    "accounting_mode": False,
-    "filter_words": DEFAULT_FILTER_WORDS
-}
-if CONFIG_FILE.exists():
-    try:
-        config_data = json.loads(CONFIG_FILE.read_text())
-        print(f"[config] Loaded from {CONFIG_FILE}")
-    except Exception as e:
-        print(f"[config] Error loading: {e}")
+config_data = load_config()
 
 API_KEY = config_data.get("api_key", "")
 MIC_INDEX = config_data.get("mic_index")
@@ -264,8 +252,8 @@ class FloatingWidget:
             ACCOUNTING_COMMA = comma_var.get()
             CASUAL_MODE = casual_var.get()
             
-            filter_text = filter_entry.get().strip()
-            FILTER_WORDS = [w.strip() for w in filter_text.split(",") if w.strip()] if filter_text else []
+            filter_str = filter_entry.get().strip()
+            FILTER_WORDS = [w.strip() for w in filter_str.split(",") if w.strip()] if filter_str else []
 
             config_data["api_key"] = API_KEY
             config_data["mic_index"] = MIC_INDEX
@@ -276,7 +264,7 @@ class FloatingWidget:
             config_data["filter_words"] = FILTER_WORDS
             
             try:
-                CONFIG_FILE.write_text(json.dumps(config_data))
+                save_config(config_data)
                 print(f"[save] Saved to {CONFIG_FILE}")
                 save_btn.config(text="✓ Saved!", bg="#00aa55")
             except Exception as e:
@@ -297,7 +285,7 @@ class FloatingWidget:
             keyboard.unhook_all()
             win.destroy()
             self.root.quit()
-            os._exit(0)
+            sys.exit(0)
 
         save_btn = tk.Button(btn_frame, text="Save", command=save, 
                             bg="#4a9eff", fg="white", font=("Arial", 11, "bold"), 
@@ -308,8 +296,8 @@ class FloatingWidget:
                  bg="#555577", fg="white", font=("Arial", 11), 
                  width=12, height=1, relief="raised", borderwidth=2, cursor="hand2").pack(side=tk.LEFT, padx=8)
 
-        tk.Button(btn_frame, text="Get API Key", 
-                 command=lambda: __import__('webbrowser').open("https://console.groq.com/keys"),
+        tk.Button(btn_frame, text="Get API Key",
+                 command=lambda: webbrowser.open("https://console.groq.com/keys"),
                  bg="#8855cc", fg="white", font=("Arial", 11), 
                  width=12, height=1, relief="raised", borderwidth=2, cursor="hand2").pack(side=tk.LEFT, padx=8)
 
@@ -321,7 +309,7 @@ class FloatingWidget:
         running = False
         keyboard.unhook_all()
         self.root.quit()
-        os._exit(0)
+        sys.exit(0)
 
     def update_status(self, status, text=""):
         colors = {"ready": "#00ff88", "recording": "#4a9eff", "processing": "#ffc107", 
@@ -341,70 +329,18 @@ widget = None
 
 
 def transcribe_with_groq(audio_path):
-    """Use Groq Whisper API."""
-    if not API_KEY:
-        return None, "No API key"
-
-    try:
-        url = "https://api.groq.com/openai/v1/audio/transcriptions"
-        headers = {"Authorization": f"Bearer {API_KEY}"}
-
-        # Read file contents first
-        with open(audio_path, "rb") as f:
-            audio_data = f.read()
-
-        files = {"file": ("audio.wav", audio_data, "audio/wav")}
-        data = {"model": "whisper-large-v3-turbo", "response_format": "json"}
-
-        with httpx.Client(timeout=30) as client:
-            response = client.post(url, headers=headers, files=files, data=data)
-
-        if response.status_code == 200:
-            result = response.json()
-            return result.get("text"), None
-        else:
-            error_msg = f"HTTP {response.status_code}"
-            try:
-                error_detail = response.json()
-                if 'error' in error_detail:
-                    error_msg += f": {error_detail['error'].get('message', str(error_detail['error']))}"
-            except:
-                pass
-            print(f"[API] Error: {error_msg}")
-            return None, error_msg
-
-    except Exception as e:
-        print(f"[API] Exception: {e}")
-        return None, str(e)
-
-
-NUMBER_WORDS = {
-    "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4",
-    "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9",
-    "ten": "10", "eleven": "11", "twelve": "12", "thirteen": "13",
-    "fourteen": "14", "fifteen": "15", "sixteen": "16", "seventeen": "17",
-    "eighteen": "18", "nineteen": "19", "twenty": "20", "thirty": "30",
-    "forty": "40", "fifty": "50", "sixty": "60", "seventy": "70",
-    "eighty": "80", "ninety": "90"
-}
+    """Use Groq Whisper API via core module."""
+    return _transcribe_core(audio_path, API_KEY)
 
 
 def convert_numbers(text):
     if not ACCOUNTING_MODE:
         return text
-    for word, digit in sorted(NUMBER_WORDS.items(), key=lambda x: -len(x[0])):
-        text = re.sub(rf'(?<![a-zA-Z]){word}(?![a-zA-Z])', digit, text, flags=re.IGNORECASE)
-    return text
+    return convert_numbers_to_digits(text)
 
 
 def filter_text(text):
-    if not text or not FILTER_WORDS:
-        return text.strip() if text else ""
-    text_lower = text.lower().strip()
-    for fw in FILTER_WORDS:
-        if text_lower == fw.lower().strip() or (len(text) < 30 and fw.lower().strip() in text_lower):
-            return ""
-    return text.strip()
+    return _filter_text_core(text, FILTER_WORDS)
 
 
 def type_text(text):
@@ -420,11 +356,8 @@ def type_text(text):
         return
     
     if CASUAL_MODE:
-        text = text.lower()
-        text = re.sub(r'\.\s', ' ', text)
-        text = re.sub(r'[!]{2,}', '!', text)
-        text = re.sub(r'[?]{2,}', '?', text)
-    
+        text = _apply_casual_mode_core(text)
+
     print(f"[typing] {text}")
     pyperclip.copy(text)
     time.sleep(0.03)

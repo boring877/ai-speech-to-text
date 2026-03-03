@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__web-reader__webReader",
+      "mcp__web-search-prime__webSearchPrime",
+      "Bash(python voice_type.py)",
+      "Bash(pip install keyboard pyperclip pyaudio pystray pillow httpx)",
+      "Bash(pyinstaller --onefile --windowed --name VoiceType voice_type.py)",
+      "Bash(python -m PyInstaller --onefile --windowed --name VoiceType voice_type.py)",
+      "Bash(pip install pyinstaller)",
+      "Bash(taskkill /F /IM VoiceType.exe)",
+      "Bash(taskkill /F /IM VoiceTypeLite.exe)",
+      "Bash(taskkill //F //IM VoiceType.exe)",
+      "Bash(taskkill //F //IM VoiceTypeLite.exe)",
+      "Bash(.venvScriptspyinstaller VoiceType.spec --noconfirm)",
+      "Bash(\"C:/Users/Borin/OneDrive/Documents/ai-speech-to-text/venv/Scripts/pyinstaller.exe\" VoiceType.spec --noconfirm)",
+      "Bash(python -m PyInstaller --version)",
+      "Bash(python -m PyInstaller VoiceType.spec --noconfirm)",
+      "Bash(du -sh /c/Users/Borin/OneDrive/Documents/ai-speech-to-text/*)",
+      "Bash(du -sh *)"
+    ]
+  }
+}

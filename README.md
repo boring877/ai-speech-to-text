@@ -85,14 +85,16 @@ Hold **SHIFT** to speak, release to type. Fast, accurate voice-to-text using Gro
 ### Windows
 ```bash
 pip install pyinstaller
-pyinstaller VoiceType.spec --noconfirm
+pyinstaller build/VoiceType.spec --noconfirm
+# Or for Lite:
+pyinstaller build/VoiceTypeLite.spec --noconfirm
 ```
 The executable will be created at `dist/VoiceType.exe`
 
 ### macOS
 ```bash
-chmod +x build-mac.sh
-./build-mac.sh
+chmod +x build/build-mac.sh
+./build/build-mac.sh
 ```
 This creates:
 - `dist/VoiceType.app` - The application bundle

@@ -1,0 +1,412 @@
+"""
+voice_type_data.py - Pure data constants for Voice Type.
+
+No logic, no imports. Just dicts and lists used by the feature modules.
+"""
+
+# ---------------------------------------------------------------------------
+# Default macros and snippets
+# ---------------------------------------------------------------------------
+
+DEFAULT_MACROS = {
+    "signature": "Best regards,",
+    "cheers": "Cheers,",
+    "thanks ahead": "Thanks in advance!",
+    "let me check": "Let me check on that and get back to you.",
+    "sounds good": "Sounds good, let me know if you need anything else!",
+    "will do": "Will do!",
+    "today date": "{{DATE}}",
+    "now time": "{{TIME}}",
+}
+
+QUICK_SNIPPETS = {
+    "email": "Please let me know if you have any questions.",
+    "meeting": "I'll send you a calendar invite shortly.",
+    "followup": "Following up on our previous conversation.",
+    "intro": "I wanted to reach out regarding",
+    "thanks": "Thank you for your time and consideration.",
+    "confirm": "Please confirm receipt of this message.",
+    "asap": "Please get back to me as soon as possible.",
+    "fyi": "For your information,",
+    "action": "Action required:",
+    "urgent": "URGENT: Please respond immediately.",
+}
+
+# ---------------------------------------------------------------------------
+# Hallucination filter — common Whisper false positives on silence
+# ---------------------------------------------------------------------------
+
+HALLUCINATION_PHRASES = [
+    "thank you",
+    "thanks",
+    "thank you.",
+    "thanks.",
+    "thank you for watching",
+    "thanks for watching",
+    "you",
+    "you.",
+    "bye",
+    "bye.",
+    "goodbye",
+    "goodbye.",
+    "subtitle",
+    "subtitles",
+    "caption",
+    "captions",
+]
+
+# ---------------------------------------------------------------------------
+# Voice commands — spoken phrases mapped to actions or replacement text
+# ---------------------------------------------------------------------------
+
+VOICE_COMMANDS = {
+    # Editing commands
+    "delete last word": "__DELETE_WORD__",
+    "delete last sentence": "__DELETE_SENTENCE__",
+    "delete all": "__DELETE_ALL__",
+    "undo that": "__DELETE_WORD__",
+    "scratch that": "__DELETE_WORD__",
+    # Navigation
+    "select all": "__SELECT_ALL__",
+    "copy that": "__COPY__",
+    "paste": "__PASTE__",
+    "cut that": "__CUT__",
+    "undo": "__UNDO__",
+    "redo": "__REDO__",
+    # Repeat
+    "repeat last": "__REPEAT_LAST__",
+    "say that again": "__REPEAT_LAST__",
+    # Formatting
+    "new paragraph": "\n\n",
+    "new line": "\n",
+    "tab": "\t",
+    "indent": "\t",
+    # Punctuation
+    "period": ".",
+    "full stop": ".",
+    "comma": ",",
+    "question mark": "?",
+    "exclamation mark": "!",
+    "exclamation point": "!",
+    "colon": ":",
+    "semicolon": ";",
+    "dash": " - ",
+    "hyphen": "-",
+    "quote": '"',
+    "open quote": '"',
+    "close quote": '"',
+    "apostrophe": "'",
+    # Brackets
+    "open parenthesis": "(",
+    "close parenthesis": ")",
+    "open bracket": "[",
+    "close bracket": "]",
+    "open brace": "{",
+    "close brace": "}",
+    # Special characters
+    "at sign": "@",
+    "at symbol": "@",
+    "hash": "#",
+    "hashtag": "#",
+    "percent": "%",
+    "percent sign": "%",
+    "ampersand": "&",
+    "asterisk": "*",
+    "plus sign": "+",
+    "minus sign": "-",
+    "equals": "=",
+    "slash": "/",
+    "backslash": "\\",
+    "underscore": "_",
+    "pipe": "|",
+    "caret": "^",
+    "tilde": "~",
+    "backtick": "`",
+    "dollar sign": "$",
+    # Common URL parts
+    "dot com": ".com",
+    "dot net": ".net",
+    "dot org": ".org",
+    "dot io": ".io",
+    "dot ai": ".ai",
+    "dot app": ".app",
+    "dot dev": ".dev",
+    # Programming
+    "open angle": "<",
+    "close angle": ">",
+    "less than": "<",
+    "greater than": ">",
+}
+
+# ---------------------------------------------------------------------------
+# Emoji map — voice phrases to emoji characters
+# ---------------------------------------------------------------------------
+
+EMOJI_MAP = {
+    # Common emotions
+    "happy emoji": "😊", "smile emoji": "😊", "smiling emoji": "😊",
+    "sad emoji": "😢", "crying emoji": "😭", "tears emoji": "😭",
+    "angry emoji": "😠", "mad emoji": "😠", "frustrated emoji": "😤",
+    "laughing emoji": "😂", "lol emoji": "😂", "haha emoji": "😂",
+    "love emoji": "❤️", "heart emoji": "❤️", "hearts emoji": "💕",
+    "cool emoji": "😎", "sunglasses emoji": "😎",
+    "wink emoji": "😉", "winking emoji": "😉",
+    "surprised emoji": "😲", "shocked emoji": "😱",
+    "thinking emoji": "🤔", "hmm emoji": "🤔",
+    "sleepy emoji": "😴", "tired emoji": "😴",
+    "sick emoji": "🤒", "ill emoji": "🤒",
+    "nerd emoji": "🤓", "geek emoji": "🤓",
+    # Reactions
+    "thumbs up emoji": "👍", "thumbs down emoji": "👎",
+    "ok emoji": "👌", "okay emoji": "👌",
+    "clap emoji": "👏", "applause emoji": "👏",
+    "fire emoji": "🔥", "hot emoji": "🔥", "lit emoji": "🔥",
+    "star emoji": "⭐", "stars emoji": "✨",
+    "party emoji": "🎉", "celebration emoji": "🎉", "confetti emoji": "🎊",
+    "boom emoji": "💥", "explosion emoji": "💥",
+    "check emoji": "✅", "checkmark emoji": "✅", "done emoji": "✅",
+    "x emoji": "❌", "cross emoji": "❌", "no emoji": "❌",
+    "question emoji": "❓", "confused emoji": "❓",
+    "exclamation emoji": "❗", "warning emoji": "⚠️",
+    "idea emoji": "💡", "lightbulb emoji": "💡", "bulb emoji": "💡",
+    # Hands/Gestures
+    "wave emoji": "👋", "hello emoji": "👋", "hi emoji": "👋",
+    "peace emoji": "✌️", "victory emoji": "✌️",
+    "fist emoji": "👊", "punch emoji": "👊",
+    "fingers crossed emoji": "🤞", "good luck emoji": "🤞",
+    "pray emoji": "🙏", "please emoji": "🙏", "thanks emoji": "🙏",
+    "high five emoji": "🙌", "raise hands emoji": "🙌",
+    "shrug emoji": "🤷", "idk emoji": "🤷",
+    "facepalm emoji": "🤦",
+    # Animals
+    "dog emoji": "🐕", "puppy emoji": "🐶",
+    "cat emoji": "🐱", "kitty emoji": "🐱",
+    "monkey emoji": "🐵", "see no evil emoji": "🙈",
+    "fox emoji": "🦊",
+    "bear emoji": "🐻",
+    "panda emoji": "🐼",
+    "unicorn emoji": "🦄",
+    "butterfly emoji": "🦋",
+    "snake emoji": "🐍",
+    # Food & Drinks
+    "pizza emoji": "🍕",
+    "burger emoji": "🍔", "hamburger emoji": "🍔",
+    "coffee emoji": "☕", "latte emoji": "☕",
+    "beer emoji": "🍺",
+    "wine emoji": "🍷",
+    "cake emoji": "🎂", "birthday emoji": "🎂",
+    "ice cream emoji": "🍦",
+    # Weather & Nature
+    "sun emoji": "☀️", "sunny emoji": "☀️",
+    "moon emoji": "🌙", "crescent moon emoji": "🌙",
+    "cloud emoji": "☁️", "cloudy emoji": "☁️",
+    "rain emoji": "🌧️", "rainy emoji": "🌧️",
+    "snow emoji": "❄️", "snowflake emoji": "❄️",
+    "rainbow emoji": "🌈",
+    "flower emoji": "🌸", "blossom emoji": "🌸",
+    "tree emoji": "🌳",
+    # Objects & Symbols
+    "rocket emoji": "🚀", "launch emoji": "🚀",
+    "computer emoji": "💻", "laptop emoji": "💻",
+    "phone emoji": "📱", "mobile emoji": "📱",
+    "email emoji": "📧", "mail emoji": "📧",
+    "book emoji": "📖",
+    "pencil emoji": "✏️", "write emoji": "✏️",
+    "lock emoji": "🔒", "secure emoji": "🔒",
+    "key emoji": "🔑", "password emoji": "🔑",
+    "clock emoji": "⏰", "alarm emoji": "⏰",
+    "calendar emoji": "📅", "date emoji": "📅",
+    "money emoji": "💰", "cash emoji": "💰", "dollar emoji": "💵",
+    "gift emoji": "🎁", "present emoji": "🎁",
+    "camera emoji": "📷", "photo emoji": "📷",
+    # People & Activities
+    "runner emoji": "🏃", "running emoji": "🏃",
+    "dancer emoji": "💃", "dancing emoji": "💃",
+    "coder emoji": "👨‍💻", "developer emoji": "👨‍💻", "programmer emoji": "👨‍💻",
+    "artist emoji": "🎨", "paint emoji": "🎨",
+    "gamer emoji": "🎮", "gaming emoji": "🎮", "video game emoji": "🎮",
+    "music emoji": "🎵", "song emoji": "🎵", "note emoji": "🎵",
+    "microphone emoji": "🎤", "mic emoji": "🎤",
+    "movie emoji": "🎬", "film emoji": "🎬", "cinema emoji": "🎬",
+    "workout emoji": "💪", "muscle emoji": "💪", "strong emoji": "💪",
+    # Flags & Places
+    "usa emoji": "🇺🇸", "america emoji": "🇺🇸", "us flag emoji": "🇺🇸",
+    "uk emoji": "🇬🇧", "britain emoji": "🇬🇧", "england emoji": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "world emoji": "🌍", "globe emoji": "🌍", "earth emoji": "🌍",
+    # Misc
+    "100 emoji": "💯",
+    "rock emoji": "🪨",
+    "rock and roll emoji": "🤘", "metal emoji": "🤘",
+    "skull emoji": "💀", "dead emoji": "💀",
+    "ghost emoji": "👻",
+    "alien emoji": "👽",
+    "robot emoji": "🤖", "bot emoji": "🤖",
+    "poop emoji": "💩", "shit emoji": "💩",
+    "egg emoji": "🥚", "easter emoji": "🥚",
+    "eye emoji": "👁️", "eyes emoji": "👀",
+    "ear emoji": "👂",
+    "nose emoji": "👃",
+}
+
+# ---------------------------------------------------------------------------
+# Kaomoji map — voice phrases to Japanese-style emoticons
+# ---------------------------------------------------------------------------
+
+KAOMOJI_MAP = {
+    # Happy / Positive
+    "kaomoji happy": "(◕‿◕)",
+    "kaomoji smile": "(｡◕‿◕｡)",
+    "kaomoji cute": "(◠‿◠✿)",
+    "kaomoji joy": "ヽ(^▽^)/",
+    "kaomoji excited": "\\(^▽^)/",
+    "kaomoji yay": "(ﾉ◕ヮ◕)ﾉ*:･ﾟ✧",
+    "kaomoji kawaii": "(｡♡‿♡｡)",
+    "kaomoji love": "(♡°▽°♡)",
+    "kaomoji heart": "( ˘ ³˘)♥",
+    "kaomoji blush": "(〃▽〃)",
+    "kaomoji wink": "(◕‿◠)✌",
+    "kaomoji proud": "( ´ ▽ ` )ﾉ",
+    "kaomoji sparkle": "(｡•̀ᴗ-)✧",
+    "kaomoji dance": "ヽ(•‿•)ノ",
+    "kaomoji cheer": "\\(^o^)/",
+    "kaomoji wave": "(ノ°▽°)ノ",
+    "kaomoji thumbs up": "(๑•̀ㅂ•́)و✧",
+    "kaomoji success": "(ﾉ´ヮ`)ﾉ*: ･ﾟ",
+    # Sad / Negative
+    "kaomoji sad": "(╥﹏╥)",
+    "kaomoji cry": "(T_T)",
+    "kaomoji crying": "(இ﹏இ)",
+    "kaomoji upset": "(｡•́︿•̀｡)",
+    "kaomoji depressed": "(｡ŏ﹏ŏ)",
+    "kaomoji broken heart": "(ノД`)",
+    # Angry / Frustrated
+    "kaomoji angry": "(╬ಠ益ಠ)",
+    "kaomoji mad": "ヽ(`Д´)ﾉ",
+    "kaomoji rage": "(ง •̀_•́)ง",
+    "kaomoji annoyed": "(¬_¬)",
+    "kaomoji frustrated": "(눈_눈)",
+    # Surprised / Shocked
+    "kaomoji surprised": "(⊙_⊙)",
+    "kaomoji shocked": "∑(O_O;)",
+    "kaomoji wow": "(☉_☉)",
+    "kaomoji omg": "⊙﹏⊙",
+    # Confused / Thinking
+    "kaomoji confused": "(￣ω￣;)",
+    "kaomoji thinking": "(•ิ_•ิ)?",
+    "kaomoji hmm": "(｀・ω・´)",
+    "kaomoji question": "(?_?)",
+    "kaomoji unsure": "(´・_・`)",
+    # Cool / Confident
+    "kaomoji cool": "( •_•)>⌐■-■",
+    "kaomoji sunglasses": "(⌐■_■)",
+    "kaomoji boss": "ʕ•ᴥ•ʔ",
+    "kaomoji swag": "( ´ ▽ ` )b",
+    # Nervous / Awkward
+    "kaomoji nervous": "(°_°;)",
+    "kaomoji awkward": "(⊙_⊙;)",
+    "kaomoji sweat": "(^_^;)",
+    "kaomoji shy": "(〃ω〃)",
+    "kaomoji embarrassed": "(≧▽≦)",
+    # Sleepy / Tired
+    "kaomoji sleepy": "(－_－) zzZ",
+    "kaomoji tired": "(=_=)",
+    "kaomoji yawn": "(⊃｡•́‿•̀｡)⊃",
+    "kaomoji bored": "(-_-zzz)",
+    # Animals / Characters
+    "kaomoji bear": "ʕ•ᴥ•ʔ",
+    "kaomoji cat": "(=^･ω･^=)",
+    "kaomoji bunny": "(\\_/)(•_•)",
+    "kaomoji dog": "(▽^ω^ )",
+    "kaomoji fish": "><((((º>",
+    "kaomoji penguin": "(^^(-_-)^^)",
+    # Actions / Gestures
+    "kaomoji bow": "(＿＿)m",
+    "kaomoji salute": "( ˘̩̩̩̩̩̩ε˘̩̩̩̩̩̩)ﾉ",
+    "kaomoji fight": "(ง'̀-'́)ง",
+    "kaomoji run": "ε=ε=ε=┌(;*´Д`)ﾉ",
+    "kaomoji tableflip": "(╯°□°）╯︵ ┻━┻",
+    "kaomoji table back": "┬─┬ノ( º _ ºノ)",
+    "kaomoji shrug": "¯\\_(ツ)_/¯",
+    "kaomoji facepalm": "(－‸ლ)",
+    "kaomoji poke": "(っ˘ω˘ς)",
+    "kaomoji hug": "(づ｡◕‿‿◕｡)づ",
+    "kaomoji gift": "(●´ω｀●) ﾉ□",
+    # Misc / Fun
+    "kaomoji music": "(^_^♪)",
+    "kaomoji cake": "(̲̅^̲̅^̲̅) 🎂",
+    "kaomoji star": "(*☻-☻*)",
+    "kaomoji money": "($・・)/",
+    "kaomoji magic": "( *・ω・)✄",
+    "kaomoji ninja": "(⌐■_■)ノ♪",
+    "kaomoji ghost": "(ʘ‿ʘ)╯",
+}
+
+# Maps standard emoji voice commands to kaomoji equivalents (for Kaomoji Mode)
+EMOJI_TO_KAOMOJI = {
+    "happy emoji": "(◕‿◕)",
+    "smile emoji": "(｡◕‿◕｡)",
+    "smiling emoji": "(｡◕‿◕｡)",
+    "sad emoji": "(╥﹏╥)",
+    "crying emoji": "(இ﹏இ)",
+    "tears emoji": "(T_T)",
+    "angry emoji": "(╬ಠ益ಠ)",
+    "mad emoji": "ヽ(`Д´)ﾉ",
+    "frustrated emoji": "(눈_눈)",
+    "laughing emoji": "( ≧∀≦)",
+    "lol emoji": "( ≧∀≦)",
+    "haha emoji": "ヽ(^▽^)/",
+    "love emoji": "(♡°▽°♡)",
+    "heart emoji": "( ˘ ³˘)♥",
+    "cool emoji": "( •_•)>⌐■-■",
+    "sunglasses emoji": "(⌐■_■)",
+    "wink emoji": "(◕‿◠)✌",
+    "winking emoji": "(◕‿◠)✌",
+    "surprised emoji": "(⊙_⊙)",
+    "shocked emoji": "∑(O_O;)",
+    "thinking emoji": "(•ิ_•ิ)?",
+    "hmm emoji": "(｀・ω・´)",
+    "sleepy emoji": "(－_－) zzZ",
+    "tired emoji": "(=_=)",
+    "thumbs up emoji": "(๑•̀ㅂ•́)و✧",
+    "thumbs down emoji": "(¬_¬)",
+    "ok emoji": "( ´ ▽ ` )b",
+    "okay emoji": "( ´ ▽ ` )b",
+    "clap emoji": "パチパチ(^_^)パチパチ",
+    "party emoji": "\\(^o^)/",
+    "celebration emoji": "ヽ(^▽^)/",
+    "shrug emoji": "¯\\_(ツ)_/¯",
+    "facepalm emoji": "(－‸ლ)",
+    "wave emoji": "(ノ°▽°)ノ",
+    "hello emoji": "(ノ°▽°)ノ",
+    "hi emoji": "(*^_^*)",
+    "music emoji": "(^_^♪)",
+    "cat emoji": "(=^･ω･^=)",
+    "dog emoji": "(▽^ω^ )",
+    "bear emoji": "ʕ•ᴥ•ʔ",
+    "robot emoji": "( ゜ω゜)",
+    "ghost emoji": "(ʘ‿ʘ)╯",
+    "fire emoji": "🔥",
+    "rocket emoji": "🚀",
+    "check emoji": "(✓)",
+    "done emoji": "(✓)",
+    "x emoji": "(✗)",
+    "no emoji": "ヽ(`Д´)ﾉ",
+}
+
+# Auto-trigger: scan spoken text and append a kaomoji if a keyword matches
+KAOMOJI_AUTO_TRIGGERS = [
+    (r"\b(haha|lol|lmao|hehe|hilarious|funny|rofl|cracking up|dying)\b",       "( ≧∀≦)"),
+    (r"\b(love|adore|i love|so good|amazing|wonderful|beautiful|gorgeous)\b",   "(♡°▽°♡)"),
+    (r"\b(angry|mad|furious|hate|rage|ugh|argh|damn|pissed|annoying)\b",        "(╬ಠ益ಠ)"),
+    (r"\b(sad|depressed|crying|heartbroken|miss|terrible|awful|miserable)\b",   "(╥﹏╥)"),
+    (r"\b(tired|sleepy|exhausted|yawn|worn out|need sleep|falling asleep)\b",   "(=_=)"),
+    (r"\b(wow|omg|oh my god|shocking|whoa|unbelievable|no way|seriously)\b",    "(⊙_⊙)"),
+    (r"\b(nervous|anxious|worried|scared|afraid|stress|stressed|freaking)\b",   "(°_°;)"),
+    (r"\b(confused|what|huh|idk|don.t know|not sure|weird|strange|bizarre)\b",  "(￣ω￣;)"),
+    (r"\b(hmm|thinking|wonder|maybe|perhaps|interesting|curious)\b",            "(｀・ω・´)"),
+    (r"\b(happy|great|awesome|excellent|perfect|fantastic|yay|nice|sweet)\b",   "(◕‿◕)"),
+    (r"\b(cool|sick|fire|lit|legendary|epic|clutch|insane)\b",                  "( •_•)>⌐■-■"),
+    (r"\b(cute|kawaii|adorable|precious|wholesome)\b",                          "(｡♡‿♡｡)"),
+    (r"\b(embarrassed|awkward|cringe|oops|my bad|sorry)\b",                     "(〃ω〃)"),
+    (r"\b(excited|pumped|hyped|can.t wait|stoked|lets go)\b",                   "ヽ(^▽^)/"),
+]

@@ -19,6 +19,7 @@ dist/*.py
 dist/*.txt
 dist/*.bat
 dist/*.md
+dist/*.zip
 
 # IDE
 .vscode/
